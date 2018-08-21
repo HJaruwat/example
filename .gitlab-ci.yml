@@ -1,0 +1,45 @@
+stages:
+    - build
+    - build-image
+
+variables:
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
+build_image:
+    stage: build-image
+    image: docker:latest
+    only: 
+        - tags
+    services:
+        - docker:dind
+    before_script:
+        - echo  $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+        - docker login -u "gitlab-ci-token" -p $CI_JOB_TOKEN $CI_REGISTRY
+    script:
+        - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME .
+        - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
+
+build-cabal-api:
+    stage: build
+    image: gitlab.exservice.io:4567/container-registry/golang:1.8
+    before_script:
+        - export ENVIRONMENT=development
+        - go get github.com/tools/godep
+        - cp -r /builds/platform/cabal-api /go/src/cabal-api
+        - cd /go/src/cabal-api
+    script:
+        # - godep restore
+        - godep go build
+
+# test-cabal-api:
+#     stage: test
+#     image: gitlab.exservice.io:4567/container-registry/golang:1.8
+#     before_script:
+#         - export ENVIRONMENT=development
+#         - go get github.com/tools/godep
+#         - cp -r /builds/platform/cabal-api /go/src/cabal-api
+#         - cd /go/src/cabal-api
+#     script:
+#        # - godep restore
+#         - godep go test -cover $(go list ./... | grep -v /vendor/)
